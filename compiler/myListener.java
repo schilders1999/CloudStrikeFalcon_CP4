@@ -1,3 +1,14 @@
+/**
+*Listener that contains various methods from the KnightCodeBaseListener to provide functionality
+* when encountering certain nodes within the parse tree.
+*
+*@author Spencer Childers
+*@author Drake Hovsepian
+*@version 1.0
+*Programming Project 4
+*CS 322 Compilers Construction
+*Fall 2021
+**/
 package compiler;
 
 import org.antlr.v4.runtime.ParserRuleContext; // need to debug every rule
@@ -27,24 +38,17 @@ public class myListener extends KnightCodeBaseListener{
 	
 	//Start of our code:
 	
-	
-	//"???" == not sure if correct. Maybe change later.
-	//??? Expected datatypes to be seen in parse tree.
 	public static final String INT = "INTEGER";
 	public static final String STR = "STRING";
 	public int newLocation = 0; //Integer value used to assign the location value of new variables.
-	public String SymbolTableVar;
-	public String SymbolTableVal;
-	public int operand1;
-	public int operand2;
-	public String currVarValue; //Value associated with variable
 	public String identifier;
-	public int intVarValue;
-	public int varLocation;
-	public int operand1Loc;
-	public int operand2Loc;
 
+
+
+	public variable var1 = new variable();
+	public variable var2 = new variable();
 	
+	//Variable class used to create variables
 	public class variable {	
 	
 		public int location = 0;//Position of variable in memory. Necessary for stacking
@@ -69,12 +73,6 @@ public class myListener extends KnightCodeBaseListener{
 	public HashMap<String, variable> SymbolTable = new HashMap<String, variable>();
 	
 	
-	//End of our code.
-	
-	
-	//"*--*" == delete later when necessary. These will be personal comments for us to clarify code.
-	//*--* List of various listener methods.
-
 
 	public void setupClass(){
 		
@@ -140,23 +138,6 @@ public class myListener extends KnightCodeBaseListener{
 		if(debug) printContext(ctx.getText());
 	}
 
-	@Override
-	public void enterPrint(KnightCodeParser.PrintContext ctx){
-
-		System.out.println("Enter print");
-		String output = ctx.getChild(1).getText();
-		//output = output.substring(5,output.length());
-		mainVisitor.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
-		mainVisitor.visitLdcInsn(output);
-		mainVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream",  "println", "(Ljava/lang/String;)V", false);
-
-	}//end enterWrite_stmt
-
-	@Override 
-	public void exitPrint(KnightCodeParser.PrintContext ctx) { 
-	
-		System.out.println("Exit print");
-	}
 	
 	
 	// Start of our code:
@@ -173,6 +154,10 @@ public class myListener extends KnightCodeBaseListener{
 	}
 	
 	@Override
+	/**
+	 * Used to put variable identifier and variable object in symbol table
+	 * @param ctx
+	 */
 	public void enterVariable(KnightCodeParser.VariableContext ctx) {
 	
 		System.out.println("Entering variable");
@@ -206,59 +191,93 @@ public class myListener extends KnightCodeBaseListener{
 		System.out.println("Exiting Body");
 	}//end exitBody
 	
+	
+	String key;
+	int currLoc = 0;
+	
 	@Override 
+	/**
+	 * Used to assign values to variables
+	 * @param ctx
+	 */
 	public void enterSetvar(KnightCodeParser.SetvarContext ctx) { 
 		
 		System.out.println("Entering SetVar");
-		SymbolTableVar = ctx.getChild(1).getText();
-		SymbolTable.get(SymbolTableVar).varValue = ctx.getChild(3).getText();
-		currVarValue = SymbolTable.get(SymbolTableVar).varValue;
-		varLocation = SymbolTable.get(SymbolTableVar).location;
 		
+		key = ctx.getChild(1).getText();
+		var1 = SymbolTable.get(key);
 	}//end enterSetvar
 	
 	@Override 
 	public void exitSetvar(KnightCodeParser.SetvarContext ctx) { 
 	
-		intVarValue = Integer.valueOf(currVarValue);
-		System.out.print(currVarValue+"\n");
+		int store = var1.location;
 		
 		
-		if (identifier=="INTEGER") {
+		if (var1.varType.equalsIgnoreCase("INTEGER")) {
 		
-			mainVisitor.visitLdcInsn(intVarValue);
-			mainVisitor.visitVarInsn(ISTORE, varLocation); 
+			mainVisitor.visitVarInsn(ISTORE, store); 
 			
-		} else { //else if identifier == "STRING"
+		} 
 		
-			mainVisitor.visitLdcInsn(currVarValue);
-			mainVisitor.visitVarInsn(ASTORE, varLocation);
+		else if (var1.varType.equalsIgnoreCase("STRING")) { //else if identifier == "STRING"
+		
+			mainVisitor.visitVarInsn(ASTORE, store);
 		}
 		
 		System.out.println("Exiting Setvar");
 	}
 	
+	public int num = 0;
+	
+	@Override
+	/**
+	 * Pushes memory location of operand on to stack
+	 * @param ctx
+	 */
+	public void enterNumber(KnightCodeParser.NumberContext ctx){
+		
+		num = Integer.valueOf(ctx.getText());
+		mainVisitor.visitIntInsn(SIPUSH, num);
+	
+	}
 	
 	@Override 
+	public void exitNumber(KnightCodeParser.NumberContext ctx) { }
+	
+	String keyID = "";
+	
+	@Override 
+	/**
+	 * Loads the memory location of a predefined variable
+	 * @param ctx
+	 */
+	public void enterId(KnightCodeParser.IdContext ctx) { 
+		
+		System.out.println("Entering ID");
+		keyID = ctx.getText();
+		var2 = SymbolTable.get(keyID);
+		currLoc = var2.location;
+		mainVisitor.visitIntInsn(ILOAD, currLoc);
+	
+	}
+	
+	@Override 
+	public void exitId(KnightCodeParser.IdContext ctx) { 
+		System.out.println("Exiting ID");
+	}
+	
+	
+	@Override 
+	/**
+	 * Methods for addition
+	 * @param ctx
+	 */
    	public void enterAddition(KnightCodeParser.AdditionContext ctx){ 
 		
 		System.out.println("Entering Addition");
 		
-		//Assigning operand 1
-		String op1Variable = ctx.getChild(0).getText();
-		operand1 = Integer.valueOf(SymbolTable.get(op1Variable).varValue);
-		operand1Loc = SymbolTable.get(op1Variable).location;
-		System.out.println(operand1Loc);
 		
-		//Assigning operand 2
-		String op2Variable = ctx.getChild(2).getText();
-		operand2 = Integer.valueOf(SymbolTable.get(op2Variable).varValue);
-		operand2Loc = SymbolTable.get(op2Variable).location;
-		System.out.println(operand2Loc);
-
-		mainVisitor.visitIntInsn(ILOAD, operand1Loc);
-		
-		mainVisitor.visitIntInsn(ILOAD, operand2Loc);
 		
     	}//end enterAddition
 	
@@ -266,113 +285,269 @@ public class myListener extends KnightCodeBaseListener{
    	public void exitAddition(KnightCodeParser.AdditionContext ctx){ 
 		
 		mainVisitor.visitInsn(IADD);
-		mainVisitor.visitIntInsn(ISTORE,SymbolTable.get(identifier).location);
-		System.out.println(SymbolTable.get(identifier).varValue);
+		
 		System.out.println("Exiting Addition");
 		
    	}//end exitAddition
 	
 	
-	@Override public void enterSubtraction(KnightCodeParser.SubtractionContext ctx) { 
+	@Override 
+	/**
+	 * Methods for subtraction
+	 * @param ctx
+	 */
+	public void enterSubtraction(KnightCodeParser.SubtractionContext ctx) { 
 		
 		System.out.println("Entering Subraction");
 		
-		//Assigning operand 1
-		String op1Variable = ctx.getChild(0).getText();
-		operand1 = Integer.valueOf(SymbolTable.get(op1Variable).varValue);
-		operand1Loc = SymbolTable.get(op1Variable).location;
-		System.out.println(operand1Loc);
 		
-		//Assigning operand 2
-		String op2Variable = ctx.getChild(2).getText();
-		operand2 = Integer.valueOf(SymbolTable.get(op2Variable).varValue);
-		operand2Loc = SymbolTable.get(op2Variable).location;
-		System.out.println(operand2Loc);
-
-		mainVisitor.visitIntInsn(ILOAD, operand1Loc);
-		
-		mainVisitor.visitIntInsn(ILOAD, operand2Loc);
 	}
 	
-	@Override public void exitSubtraction(KnightCodeParser.SubtractionContext ctx) { 
+	@Override 
+	public void exitSubtraction(KnightCodeParser.SubtractionContext ctx) { 
 	
 		mainVisitor.visitInsn(ISUB);
 	
 		System.out.println("Exiting Subtraction");
 	}
 	
-	@Override public void enterMultiplication(KnightCodeParser.MultiplicationContext ctx) { 
+	@Override 
+	/**
+	 * Methods for Multiplication
+	 * @param ctx
+	 */
+	public void enterMultiplication(KnightCodeParser.MultiplicationContext ctx) { 
 	
 		System.out.println("Entering Multiplication");
 		
-		//Assigning operand 1
-		String op1Variable = ctx.getChild(0).getText();
-		operand1 = Integer.valueOf(SymbolTable.get(op1Variable).varValue);
-		operand1Loc = SymbolTable.get(op1Variable).location;
-		System.out.println(operand1Loc);
-		
-		//Assigning operand 2
-		String op2Variable = ctx.getChild(2).getText();
-		operand2 = Integer.valueOf(SymbolTable.get(op2Variable).varValue);
-		operand2Loc = SymbolTable.get(op2Variable).location;
-		System.out.println(operand2Loc);
-
-		mainVisitor.visitIntInsn(ILOAD, operand1Loc);
-		
-		mainVisitor.visitIntInsn(ILOAD, operand2Loc);
 	}
 	
-	@Override public void exitMultiplication(KnightCodeParser.MultiplicationContext ctx) { 
+	@Override 
+	public void exitMultiplication(KnightCodeParser.MultiplicationContext ctx) { 
 	
 		mainVisitor.visitInsn(IMUL);
 		
 		System.out.println("Exiting Multiplication");
 	}
 	
-	@Override public void enterDivision(KnightCodeParser.DivisionContext ctx) { 
+	@Override 
+	/**
+	 * Methods for Division
+	 * @param ctx
+	 */
+	public void enterDivision(KnightCodeParser.DivisionContext ctx) { 
 	
 		System.out.println("Entering Division");
 		
-		//Assigning operand 1
-		String op1Variable = ctx.getChild(0).getText();
-		operand1 = Integer.valueOf(SymbolTable.get(op1Variable).varValue);
-		operand1Loc = SymbolTable.get(op1Variable).location;
-		System.out.println(operand1Loc);
-		
-		//Assigning operand 2
-		String op2Variable = ctx.getChild(2).getText();
-		operand2 = Integer.valueOf(SymbolTable.get(op2Variable).varValue);
-		operand2Loc = SymbolTable.get(op2Variable).location;
-		System.out.println(operand2Loc);
-
-		mainVisitor.visitIntInsn(ILOAD, operand1Loc);
-		
-		mainVisitor.visitIntInsn(ILOAD, operand2Loc);
 	}
 	
-	@Override public void exitDivision(KnightCodeParser.DivisionContext ctx) { 
+	@Override 
+	public void exitDivision(KnightCodeParser.DivisionContext ctx) { 
 		
 		mainVisitor.visitInsn(IDIV);
 		
 		System.out.println("Exiting Division");
 	}
+	
+	boolean printBull = true;
+	boolean printInt = false;
+	
+	@Override
+	/**
+	 * Methods used for printing. Checks if item being printed is a string or int before printing.
+	 * @param ctx
+	 */
+	public void enterPrint(KnightCodeParser.PrintContext ctx){
 
-	@Override public void enterRead(KnightCodeParser.ReadContext ctx) { }
+		System.out.println("Enter print");
+		String output = ctx.getChild(1).getText();
+		//output = output.substring(5,output.length());
+		
+		keyID = ctx.getChild(1).getText();
+		
 	
-	@Override public void exitRead(KnightCodeParser.ReadContext ctx) { }
+		mainVisitor.visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+		
+		if(SymbolTable.containsKey(keyID)){
+			printBull = false;
+			var2 = SymbolTable.get(keyID);
+			
+			if (var2.varType.equalsIgnoreCase("INTEGER")){
+				printInt = true;
+			}else{
+				printInt = false;
+			}
+			
+		} 
+		else {
+			printBull = true;
+		}
+		
+		
+
+	}//end enterWrite_stmt
+
+	@Override 
+	public void exitPrint(KnightCodeParser.PrintContext ctx) { 
+	
+		if(printBull) {
+			mainVisitor.visitLdcInsn(ctx.getChild(1).getText());
+			mainVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream",  "println", "(Ljava/lang/String;)V", false);
+		}
+		else{
+			
+			if(printInt){
+				mainVisitor.visitVarInsn(ILOAD, var2.location);
+				mainVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream",  "println", "(I)V", false);
+			}
+			else{
+				mainVisitor.visitVarInsn(ALOAD, var2.location);
+				mainVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream",  "println", "(Ljava/lang/String;)V", false);
+			}
+		}	
+				
+			
+			
+		System.out.println("Exit print");
+	}
+	
+	public int scanLoc = -1;
+	
+	@Override 
+	/**
+	 * Creates a new scanner which is stored in a memory location
+	 * @param ctx
+	 */
+	public void enterRead(KnightCodeParser.ReadContext ctx) {
+	
+		System.out.println("Enter read");
+		if(scanLoc == -1) {
+		
+			scanLoc = newLocation; 
+			newLocation++;
+			
+			mainVisitor.visitTypeInsn(NEW, "java/util/Scanner");
+			mainVisitor.visitInsn(DUP);
+			mainVisitor.visitFieldInsn(GETSTATIC, "java/lang/System", "in", "Ljava/io/InputStream;");
+			mainVisitor.visitMethodInsn(INVOKESPECIAL, "java/util/Scanner", "<init>", "(Ljava/io/InputStream;)V" , false);
+			
+			mainVisitor.visitVarInsn(ASTORE, scanLoc);
+			
+			
+		}//end if
+		
+		
+		
+	 }//end enterRead
+	
+	@Override 
+	/**
+	 * Reads and stores an item entered at the command line. Uses if statement to determine whether item is a string or an integer.
+	 * @param ctx
+	 */
+	public void exitRead(KnightCodeParser.ReadContext ctx) {
+		variable var3 = SymbolTable.get(ctx.getChild(1).getText());
+		
+		mainVisitor.visitVarInsn(ALOAD, scanLoc);
+		
+		if ( var3.varType.equalsIgnoreCase("INTEGER")) {
+		
+			mainVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/Scanner", "nextInt", "()I", false);
+			mainVisitor.visitVarInsn(ISTORE, var3.location);
+			
+			mainVisitor.visitVarInsn(ALOAD, scanLoc);
+			mainVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/Scanner", "nextLine", "()Ljava/lang/String;", false);
+			mainVisitor.visitInsn(POP);
+		} else {
+			mainVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/Scanner", "nextLine", "()Ljava/lang/String", false);
+			mainVisitor.visitVarInsn(ASTORE, var3.location);
+			
+		}
+		
+		SymbolTable.put(ctx.getChild(1).getText(), var3);
+		
+		System.out.println("Exiting Read");
+		
+		
+	}//end exitRead
+	
+	Label startLoop = new Label();
+	Label endLoop = new Label();
+	
+	@Override 
+	/**
+	 * Methods used to perform while loops.
+	 * @param ctx
+	 */
+	public void enterLoop(KnightCodeParser.LoopContext ctx) { 
+	
+		System.out.println("Entering Loop");
+		
+		
+		var1 = SymbolTable.get(ctx.getChild(1).getText());
+		int firstComp = var1.location;
+		
+		
+		
+		int testVar = Integer.valueOf(ctx.getChild(3).getText());
+		System.out.println(testVar);
+		//int secondComp = var2.location;
+		int secondComp = testVar;
+		
+		mainVisitor.visitIntInsn(ILOAD, firstComp);
+		mainVisitor.visitIntInsn(ILOAD, secondComp);
+		
+		/**
+		if (SymbolTable.containsKey(var2)){
+			
+			System.out.println("!");
+			mainVisitor.visitVarInsn(ALOAD, secondComp);
+		}
+		else{
+			var2 = ctx.getChild(3).getText();
+			mainVisitor.visitIntInsn(ILOAD, secondComp);
+		}
+		***/
+		
+		
+		String compSign = ctx.getChild(2).getChild(0).getText();
+		
+		if(compSign == ">") {
+			mainVisitor.visitJumpInsn(IF_ICMPLE, endLoop);
+			
+		}
+		else if (compSign == "<") {
+			mainVisitor.visitJumpInsn(IF_ICMPGE, endLoop);
+			
+		}
+		else if (compSign == "=") {
+			mainVisitor.visitJumpInsn(IF_ICMPNE, endLoop);
+			
+		}
+		else if (compSign == "<>") {
+			mainVisitor.visitJumpInsn(IF_ICMPEQ, endLoop);
+			
+		}
+		
+		mainVisitor.visitLabel(startLoop);
+
+		
+			
+	}//end enterLoop
+	
+	@Override 
+	public void exitLoop(KnightCodeParser.LoopContext ctx) {
+	
+		mainVisitor.visitJumpInsn(GOTO, startLoop);
+		mainVisitor.visitLabel(endLoop);
+	
+		System.out.println("Exiting Loop");
+	 }//end exitLoop
 	
 	
-	@Override public void enterLoop(KnightCodeParser.LoopContext ctx) { }
-	
-	@Override public void exitLoop(KnightCodeParser.LoopContext ctx) { }
-	
-	
-	@Override public void enterComparison(KnightCodeParser.ComparisonContext ctx) { }
-	
-	@Override public void exitComparison(KnightCodeParser.ComparisonContext ctx) { }
 	
 
-
+	
 
 
 

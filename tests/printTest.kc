@@ -5,6 +5,8 @@ DECLARE
 
 BEGIN
 
-PRINT "HELLO WORLD"
+
+PRINT "Hello World!"
+
 
 END

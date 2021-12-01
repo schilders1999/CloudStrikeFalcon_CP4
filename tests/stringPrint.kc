@@ -1,0 +1,11 @@
+PROGRAM wordConcat
+
+DECLARE
+	STRING a
+
+BEGIN
+
+SET a := "Does this print?"
+PRINT a 
+
+END

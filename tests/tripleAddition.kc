@@ -1,0 +1,19 @@
+PROGRAM tripleAddition
+
+DECLARE
+	INTEGER x
+	INTEGER y
+	INTEGER w
+	INTEGER z
+
+BEGIN
+
+SET x := 10
+SET y := 12
+SET w := 20
+SET z := x + y + w
+
+PRINT z
+
+END
+

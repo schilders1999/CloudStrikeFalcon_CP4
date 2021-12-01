@@ -1,0 +1,13 @@
+PROGRAM readTest
+
+DECLARE
+	INTEGER x
+
+BEGIN
+
+
+PRINT "Please Type an Integer: "
+READ x
+PRINT x
+
+END
